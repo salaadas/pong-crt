@@ -1,0 +1,54 @@
+#ifdef FRAGMENT_SHADER
+
+#define REFLECTION_STRENGTH    0.25
+#define PHOSPHOR_COLOR         vec4(1, 1, 1, 1) // @Incomplete: Not used
+#define BEZEL_SMOOTHING_FACTOR 0.004
+
+#define GEOMETRY_CORNER_SIZE    0.011
+#define GEOMETRY_CORNER_SMOOTH  280.0
+
+// @Incomplete: We want to have overscans for other game resolutions as well.
+// @Incomplete: We want to have overscans for other game resolutions as well.
+// @Incomplete: We want to have overscans for other game resolutions as well.
+#define ASPECT vec2(1.0, 0.75) // For example, 320 by 240.
+
+float pseudo_random(vec2 xy)
+{
+    return fract(sin(dot(xy, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+vec2 do_curve(vec2 uv)
+{
+    // @Cleanup: We want to revisit this to take in parameters
+    // because we may want to change the overlay background later on.
+
+    uv = (uv - 0.5) * 2.0; // This is to convert uv to [-1..1]
+    uv *= 1.085; // @Hardcode: This is the pixel size.
+
+    float x_scale = abs(uv.y) / 5.5; // @Hardcode: The denominator values are arbitrary.
+    float y_scale = abs(uv.x) / 5.0;
+
+    uv.x *= 1.0 + (x_scale * x_scale); // Squaring 'x_scale' and 'y_scale' to amplify the effect.
+    uv.y *= 1.0 + (y_scale * y_scale);
+
+    uv *= 0.5; // Convert uv back to [0..1].
+    uv += 0.5;
+
+    uv *= 0.92; // Magic numbers.
+    uv += 0.04;
+
+    return uv;
+}
+
+float get_corner_factor(vec2 uv)
+{
+    uv = min(uv, vec2(1.0) - uv) * ASPECT;
+
+    vec2 corner_distance = vec2(GEOMETRY_CORNER_SIZE);
+    uv = corner_distance - min(uv, corner_distance);
+
+    float dist = sqrt(dot(uv, uv));
+    return clamp((corner_distance.x - dist) * GEOMETRY_CORNER_SMOOTH, 0.0, 1.0);
+}
+
+#endif

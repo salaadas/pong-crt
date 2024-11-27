@@ -1,0 +1,20 @@
+vec3 convert_color_to_gamma_22_space(vec3 color)
+{
+    vec3 result = color;
+    result      = abs(result); // @Cleanup: This might be redundant.
+    result      = pow(result, vec3(2.2)); // Convert to gama 2.2 space here.
+
+    return result;
+}
+
+vec3 apply_filmic_tone_map(vec3 linear_color)
+{
+    vec3 x = max(vec3(0.0), linear_color - vec3(0.005));
+    return (x * (6.2*x + 0.5)) / (x * (6.2*x + 1.7) + 0.06);
+}
+
+vec3 sample_texture_as_srgb(sampler2D sampler, vec2 uv)
+{
+    vec3 texture_color = texture(sampler, uv).xyz;
+    return convert_color_to_gamma_22_space(texture_color);
+}

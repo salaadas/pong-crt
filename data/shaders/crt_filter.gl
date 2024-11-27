@@ -1,0 +1,205 @@
+//
+// @Speed @Optimize: Right now, the post-processing stage is taking up a lot of
+// time, so we should really go through and do some shader optimization here.
+//
+// One reason would be the multiple render passes that we go through during the post-processing
+// stage; another reason is that we are doing the extra glow effect, which I don't know is redundant
+// or not with the shader that doesn't have the glow, so maybe the glow part will go away later...
+//                                                           - November 24, 2024.
+//
+
+// Disabling these so we have z-ordering layer.
+// // @@NoDepthWrite
+// // @@NoDepthTest
+
+// @@include "crt_params.glh"
+
+COMM vec4 scale_color;
+COMM vec2 uv0;
+
+#ifdef VERTEX_SHADER
+
+uniform mat4 transform;
+
+layout (location = 0) in vec3 vert_position;
+layout (location = 1) in vec4 vert_color_scale;
+layout (location = 3) in vec2 vert_uv0;
+
+void main()
+{
+    vec4 pos = transform * vec4(vert_position, 1);
+
+    scale_color = vert_color_scale;
+
+    gl_Position = pos;
+    uv0 = vert_uv0;
+}
+
+#endif
+
+
+
+
+#ifdef FRAGMENT_SHADER
+
+// @@include "common_fragment.glh"
+
+uniform float game_time;
+uniform vec2 render_target_size;
+// uniform vec2 game_screen_size;
+
+out vec4 output_color;
+layout (binding = 0) uniform sampler2D diffuse_texture;
+layout (binding = 2) uniform sampler2D blend_texture; // This is the blur texture used for ghosting...
+
+#define GLOW_WIDTH    0.5
+#define GLOW_HEIGHT   0.5
+#define GLOW_HALATION 2.0
+
+mat3 get_color_matrix(sampler2D sampler, vec2 uv, vec2 dx)
+{
+    return mat3(sample_texture_as_srgb(sampler, uv - dx),
+                sample_texture_as_srgb(sampler, uv),
+                sample_texture_as_srgb(sampler, uv + dx));
+}
+
+// @Cleanup: Is blurring in the main game redundant?
+// @Cleanup: Is blurring in the main game redundant?
+// @Cleanup: Is blurring in the main game redundant?
+// @Cleanup: Is blurring in the main game redundant?
+vec3 blur(mat3 m, float dist, float radius)
+{
+    vec3 x = vec3(dist - 1.0, dist, dist + 1.0) / radius;
+    vec3 w = exp2(-1.0 * x*x);
+
+    return (w.x*m[0] + w.y*m[1] + w.z*m[2]) / (w.x + w.y + w.z); // We don't check for divide by 0 because 2^x will not be 0.
+}
+
+vec3 filter_gaussian(sampler2D sampler, vec2 sampler_size, vec2 uv)
+{
+    vec2 dx = vec2(1.0 / sampler_size.x, 0.0);
+    vec2 dy = vec2(0.0,                  1.0  / sampler_size.y);
+
+    vec2 pixel_uv   = uv * sampler_size;
+    vec2 texture_uv = (floor(pixel_uv) + 0.5) / sampler_size;
+
+    vec2 dist = -1.0 * (fract(pixel_uv) - 0.5);
+
+    mat3 line1  = get_color_matrix(sampler, texture_uv - dy, dx);
+    mat3 line2  = get_color_matrix(sampler, texture_uv,      dx);
+    mat3 line3  = get_color_matrix(sampler, texture_uv + dy, dx);
+    mat3 column = mat3(blur(line1, dist.x, GLOW_WIDTH),
+                       blur(line2, dist.x, GLOW_WIDTH),
+                       blur(line3, dist.x, GLOW_WIDTH));
+
+    return blur(column, dist.y, GLOW_HEIGHT);
+}
+
+void main()
+{
+    vec2 curved_uv = do_curve(uv0);
+
+    // Using step() will make the corner_value be either 0.0 or 1.0.
+    float corner_value = get_corner_factor(curved_uv) * step(0.0, fract(curved_uv.y));
+
+    vec3 color;
+
+    //
+    // Bleeding the x based on where the pixel is placed horizontally,
+    // the further the pixel is from the bottom, the more bleeding we get?
+    //
+
+    // The x here is the base x for sampling from the texture.
+    float sample_x = 0.001 *
+        sin(0.80 * game_time + curved_uv.y * 11.0) *
+        sin(0.93 * game_time + curved_uv.y * 19.0) *
+        sin(0.81 * game_time + curved_uv.y * 23.0 + 0.3);
+
+    float ox = sin(gl_FragCoord.y * 1.5) / render_target_size.x;
+
+    sample_x += ox * 0.25;
+    sample_x *= 0.2;
+
+    vec2 red_uv   = vec2(sample_x + curved_uv.x + .0009*.25, curved_uv.y + .0009*.25);
+    vec2 green_uv = vec2(sample_x + curved_uv.x,             curved_uv.y - .0011*.25);
+    vec2 blue_uv  = vec2(sample_x + curved_uv.x - .0015*.25, curved_uv.y);
+
+    color.r = sample_texture_as_srgb(diffuse_texture, red_uv).x   + .02;
+    color.g = sample_texture_as_srgb(diffuse_texture, green_uv).y + .02;
+    color.b = sample_texture_as_srgb(diffuse_texture, blue_uv).z  + .02;
+
+    //
+    // Ghosting
+    //
+    float ghosting_factor = 0.2;
+    vec3 ghosting_r = sample_texture_as_srgb(blend_texture, .45 * vec2(sample_x - .014, -.027)
+                                             + .007 * .35 * vec2(sin(1.0/7.0 + 15.0*curved_uv.y + 0.9*game_time), sin(2.0/7.0 + 10.0*curved_uv.y + 1.37*game_time))
+                                             + vec2(curved_uv.x + .001, curved_uv.y + .001));
+
+    vec3 ghosting_g = sample_texture_as_srgb(blend_texture, .45 * vec2(sample_x - .019, -.02)
+                                             + .007 * .35 * vec2(cos(1.0/9.0 + 15.0*curved_uv.y + 0.5*game_time), sin(2.0/9.0 + 10.0*curved_uv.y + 1.50*game_time))
+                                             + vec2(curved_uv.x, curved_uv.y - .002));
+
+    vec3 ghosting_b = sample_texture_as_srgb(blend_texture, .35 * vec2(sample_x - .017, -.003)
+                                             + .007 * .35 * vec2(sin(2.0/3.0 + 15.0*curved_uv.y + 0.7*game_time), cos(2.0/3.0 + 10.0*curved_uv.y + 1.63*game_time))
+                                             + vec2(curved_uv.x - .002, curved_uv.y));
+
+    float ghosting_i = clamp(color.r*0.299 + color.g*0.587 + color.b*0.114, 0.0, 1.0);
+    ghosting_i = 1.0 - ghosting_i*ghosting_i;
+    ghosting_i = 0.15 + (1.0 - ghosting_i) * 0.85;
+
+    color += vec3(ghosting_factor*(1.0 - .299)) * pow(clamp(vec3(3.0) * ghosting_r, vec3(0), vec3(1)), vec3(2.0)) * vec3(ghosting_i);
+    color += vec3(ghosting_factor*(1.0 - .587)) * pow(clamp(vec3(3.0) * ghosting_g, vec3(0), vec3(1)), vec3(2.0)) * vec3(ghosting_i);
+    color += vec3(ghosting_factor*(1.0 - .114)) * pow(clamp(vec3(3.0) * ghosting_b, vec3(0), vec3(1)), vec3(2.0)) * vec3(ghosting_i);
+
+    //
+    // Doing some color adjustments.
+    //
+    color.g *= 1.1;
+    color = clamp(color*1.3 + 0.75*color*color + 1.25*color*color*color*color*color, vec3(0.0), vec3(10.0));
+
+    //
+    // Glowing.
+    //
+    vec3 color_glow = filter_gaussian(diffuse_texture, render_target_size, vec2(sample_x + curved_uv.x, curved_uv.y));
+    color_glow      = clamp(color_glow - color, 0.0, 1.0);
+    color += color_glow * color_glow * GLOW_HALATION;
+
+    //
+    // Vignette.
+    //
+    float vignette_factor = 0.1 + 16.0 * curved_uv.x * curved_uv.y * (1.0 - curved_uv.x) * (1.0 - curved_uv.y);
+    vignette_factor = 1.3 * pow(vignette_factor, 0.5);
+    color *= vignette_factor;
+
+    //
+    // Scanlines.
+    //
+    float scanline_factor = clamp(0.5 + 0.2 * sin(cos(20.0 * game_time) * 0.32 + curved_uv.y * render_target_size.y * 1.75), 0.0, 1.0);
+    scanline_factor = pow(scanline_factor, 0.9);
+    color *= scanline_factor;
+
+    // Vertical lines.
+    color *= 1.0 - 0.23 * clamp(.5 * mod(gl_FragCoord.x, 3.0), 0.0, 1.0);
+
+    // Tone mapping.
+    color = apply_filmic_tone_map(color);
+
+    // Noise
+    vec2 seed = curved_uv * render_target_size.xy;
+    color -= 0.015 * pow(vec3(pseudo_random(seed + game_time),
+                              pseudo_random(seed + game_time * 2.0),
+                              pseudo_random(seed + game_time * 3.0)),
+                         vec3(1.5));
+
+    // Some flickering!
+    color *= 1.0 - 0.009 * (0.5 + 0.5 * sin(50.0 * game_time + curved_uv.y * 2.0));
+
+    // Apply the corner value.
+    color *= corner_value;
+
+    color *= vec3(scale_color);
+    output_color = vec4(color.xyz, corner_value);
+}
+
+#endif

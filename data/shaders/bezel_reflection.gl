@@ -1,0 +1,160 @@
+// @Fixme: @Cleanup: Instead of the DO_EXTRA_BLUR hack,
+// we should make the blur textures do mipmapping and scale down the
+// blur render targets so that we don't have to do the blurring again here.
+
+// Disabling these so we have z-ordering layer.
+// // @@NoDepthWrite
+// // @@NoDepthTest
+
+// @@include "crt_params.glh"
+
+COMM vec4 scale_color;
+COMM vec2 uv0;
+
+COMM vec2 uv_in_overlay_space;
+COMM vec2 uv_in_blur_texture_space;
+COMM vec2 blur_texture_size_in_bezel_space;
+
+#ifdef VERTEX_SHADER
+
+uniform mat4 transform;
+
+uniform vec2 game_plus_bezel_size;
+uniform vec2 game_without_bezel_size;
+uniform vec2 bezel_center_in_overlay_space;
+uniform vec2 overlay_size;
+
+layout (location = 0) in vec3 vert_position;
+layout (location = 1) in vec4 vert_color_scale;
+layout (location = 3) in vec2 vert_uv0;
+
+void main()
+{
+    vec4 pos = transform * vec4(vert_position, 1);
+
+    scale_color = vert_color_scale;
+
+    gl_Position = pos;
+    uv0 = vert_uv0;
+
+    vec2 pos_in_overlay_space = uv0 * game_plus_bezel_size + (bezel_center_in_overlay_space - 0.5 * game_plus_bezel_size);
+    uv_in_overlay_space = pos_in_overlay_space / overlay_size;
+
+    blur_texture_size_in_bezel_space = game_without_bezel_size / game_plus_bezel_size;
+    vec2 blur_bottom_left    = 0.5 * (vec2(1) - blur_texture_size_in_bezel_space) * game_plus_bezel_size;
+    vec2 pos_in_bezel_space  = uv0 * game_plus_bezel_size;
+    uv_in_blur_texture_space = (pos_in_bezel_space - blur_bottom_left) / game_without_bezel_size;
+}
+
+#endif
+
+
+
+
+#ifdef FRAGMENT_SHADER
+
+// @@include "common_fragment.glh"
+
+out vec4 output_color;
+
+layout (binding = 0) uniform sampler2D diffuse_texture; // This is the blurred game texture.
+layout (binding = 4) uniform sampler2D overlay_texture; // This is the texture for the computer frame and also the background.
+
+#define EPSILON                    0.015 // If the epsilon is too low, we see a lot of artifacts.
+
+#define DO_EXTRA_BLUR
+#define REFLECTION_BLUR_ITERATIONS 5
+#define REFLECTION_BLUR_SIZE       0.022 // This is relative to blur texture size.
+
+// This assumes that the parameters are in the range of [0..1].
+float round_square_sdf(vec2 point, vec2 size, float corner_radius)
+{
+    return length(max(abs(point) - size, 0.0)) - corner_radius;
+}
+
+// Calculate normal to distance function and move along
+// normal with distance to get point of reflection
+// @Incomplete: @Todo: Read more about signed distance functions.
+// https://iquilezles.org/articles/distfunctions2d/
+vec2 do_reflect_bezel_uv(vec2 uv_in_source_image, float radius)
+{
+    vec2 epsilon_x  = vec2(EPSILON, 0);
+    vec2 epsilon_y  = vec2(0, EPSILON);
+    vec2 bezel_size = (1.0 + vec2(radius)) * (blur_texture_size_in_bezel_space * 0.525);
+
+    radius /= 3.0; // @Cleanup: Why why why?
+    uv_in_source_image -= 0.5; // Convert to range [-0.5 .. 0.5].
+
+    vec2 normal;
+
+    normal.x = round_square_sdf(uv_in_source_image - epsilon_x, bezel_size, radius) -
+        round_square_sdf(uv_in_source_image + epsilon_x, bezel_size, radius);
+    normal.y = round_square_sdf(uv_in_source_image - epsilon_y, bezel_size, radius) -
+        round_square_sdf(uv_in_source_image + epsilon_y, bezel_size, radius);
+
+    normal /= EPSILON;
+
+    float dist = round_square_sdf(uv_in_source_image, bezel_size, radius);
+    uv_in_source_image += 0.5; // Convert back to range [0 .. 1].
+
+    return uv_in_source_image + dist * normal;
+}
+
+void main()
+{
+    vec4 final_color = vec4(0, 0, 0, 0);
+
+    vec4 bezel_color = texture(overlay_texture, uv_in_overlay_space);
+    bezel_color.xyz  = apply_filmic_tone_map(convert_color_to_gamma_22_space(bezel_color.xyz));
+
+#ifdef DO_EXTRA_BLUR
+    // Doing extra blur on top of the blur texture because the blur texture is used for ghosting
+    // so it is not blurred enough!
+    for (int blur_it = 0; blur_it < REFLECTION_BLUR_ITERATIONS; ++blur_it)
+    {
+        vec2 reflected_uv    = do_reflect_bezel_uv(uv_in_blur_texture_space, GEOMETRY_CORNER_SIZE);
+
+        // In order to do blur, we sample the texture with some randomness to it.
+        vec2 uv_displacement = REFLECTION_BLUR_SIZE * (-0.5 + vec2(pseudo_random(reflected_uv + float(blur_it)),
+                                                                   pseudo_random(reflected_uv + float(blur_it) + 0.1)));
+        vec4 reflected_color = texture(diffuse_texture, reflected_uv + uv_displacement);
+
+        // @Cleanup: bezel_size here and bezel_size in do_reflect_bezel_uv().
+        // @Cleanup: bezel_size here and bezel_size in do_reflect_bezel_uv().
+        // @Cleanup: bezel_size here and bezel_size in do_reflect_bezel_uv().
+        vec2 bezel_size = (1.0 + vec2(0.05)) * (blur_texture_size_in_bezel_space * 0.525);
+        float distance_from_corner = round_square_sdf(uv0 - 0.5, bezel_size + 0.05, 0.05);
+
+        vec4 blur_color;
+        blur_color  = vec4(convert_color_to_gamma_22_space(reflected_color.xyz), reflected_color.w);
+        blur_color *= smoothstep(BEZEL_SMOOTHING_FACTOR, -BEZEL_SMOOTHING_FACTOR, distance_from_corner);
+
+        blur_color.xyz = apply_filmic_tone_map(blur_color.xyz); // Do tone mapping.
+        blur_color.xyz = clamp(bezel_color.xyz + REFLECTION_STRENGTH * blur_color.xyz, 0.0, 1.0);
+
+        blur_color  /= float(REFLECTION_BLUR_ITERATIONS);
+        final_color += blur_color;
+    }
+#else
+    vec2 reflected_uv    = do_reflect_bezel_uv(uv_in_blur_texture_space, GEOMETRY_CORNER_SIZE);
+    vec4 reflected_color = texture(diffuse_texture, reflected_uv);
+
+    // @Cleanup: bezel_size here and bezel_size in do_reflect_bezel_uv().
+    vec2 bezel_size = (1.0 + vec2(0.05)) * (blur_texture_size_in_bezel_space * 0.525);
+    float distance_from_corner = round_square_sdf(uv0 - 0.5, bezel_size + 0.05, 0.05);
+
+    final_color    += vec4(convert_color_to_gamma_22_space(reflected_color.xyz), reflected_color.w);
+    final_color    *= smoothstep(BEZEL_SMOOTHING_FACTOR, -BEZEL_SMOOTHING_FACTOR, distance_from_corner);
+
+    final_color.xyz = apply_filmic_tone_map(final_color.xyz); // Do tone mapping.
+    final_color.xyz = clamp(bezel_color.xyz + REFLECTION_STRENGTH * final_color.xyz, 0.0, 1.0);
+#endif
+
+    float corner_factor = get_corner_factor(uv0);
+    final_color.w       = clamp(final_color.w, 0.0, 1.0);
+    final_color.w      *= corner_factor;
+
+    output_color = final_color;
+}
+
+#endif

@@ -1,0 +1,49 @@
+// Disabling these so we have z-ordering layer.
+// // @@NoDepthWrite
+// // @@NoDepthTest
+
+COMM vec4 scale_color;
+COMM vec2 uv0;
+
+#ifdef VERTEX_SHADER
+
+uniform mat4 transform;
+
+layout (location = 0) in vec3 vert_position;
+layout (location = 1) in vec4 vert_color_scale;
+layout (location = 3) in vec2 vert_uv0;
+
+void main()
+{
+    vec4 pos = transform * vec4(vert_position, 1);
+
+    scale_color = vert_color_scale;
+
+    gl_Position = pos;
+    uv0 = vert_uv0;
+}
+
+#endif
+
+
+
+
+#ifdef FRAGMENT_SHADER
+
+// @@include "common_fragment.glh"
+
+out vec4 output_color;
+layout (binding = 0) uniform sampler2D diffuse_texture;
+
+void main()
+{
+    vec4 texture_color = texture(diffuse_texture, uv0);
+
+    vec3 color = convert_color_to_gamma_22_space(texture_color.xyz);
+    color      = apply_filmic_tone_map(color);
+
+    vec4 final_color = vec4(color.xyz, texture_color.w);
+    output_color     = scale_color * final_color;
+}
+
+#endif

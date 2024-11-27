@@ -1,0 +1,38 @@
+// Disabling these so we have z-ordering layer.
+// // @@NoDepthWrite
+// // @@NoDepthTest
+
+COMM vec4 scale_color;
+
+#ifdef VERTEX_SHADER
+
+uniform mat4 transform;
+
+layout (location = 0) in vec3 vert_position;
+layout (location = 1) in vec4 vert_color_scale;
+
+void main()
+{
+    vec4 pos = transform * vec4(vert_position, 1.0f);
+    // vec4 pos = vec4(vert_position, 1.0f);
+
+    scale_color = vert_color_scale;
+    // scale_color = vec4(0.0f, 1.0f, 0.0f, 1.0f);
+    gl_Position = pos;
+}
+
+#endif
+
+
+
+
+#ifdef FRAGMENT_SHADER
+
+out vec4 output_color;
+
+void main()
+{
+    output_color = scale_color;
+}
+
+#endif
