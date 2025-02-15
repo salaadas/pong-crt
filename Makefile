@@ -201,6 +201,30 @@ compiled_header_libs.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/game_debug.dir/build.make CMakeFiles/game_debug.dir/compiled_header_libs.cpp.s
 .PHONY : compiled_header_libs.cpp.s
 
+controller_view.o: controller_view.cpp.o
+.PHONY : controller_view.o
+
+# target to build an object file
+controller_view.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game_debug.dir/build.make CMakeFiles/game_debug.dir/controller_view.cpp.o
+.PHONY : controller_view.cpp.o
+
+controller_view.i: controller_view.cpp.i
+.PHONY : controller_view.i
+
+# target to preprocess a source file
+controller_view.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game_debug.dir/build.make CMakeFiles/game_debug.dir/controller_view.cpp.i
+.PHONY : controller_view.cpp.i
+
+controller_view.s: controller_view.cpp.s
+.PHONY : controller_view.s
+
+# target to generate assembly for a file
+controller_view.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game_debug.dir/build.make CMakeFiles/game_debug.dir/controller_view.cpp.s
+.PHONY : controller_view.cpp.s
+
 draw.o: draw.cpp.o
 .PHONY : draw.o
 
@@ -392,6 +416,30 @@ main.s: main.cpp.s
 main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/game_debug.dir/build.make CMakeFiles/game_debug.dir/main.cpp.s
 .PHONY : main.cpp.s
+
+mesh_catalog.o: mesh_catalog.cpp.o
+.PHONY : mesh_catalog.o
+
+# target to build an object file
+mesh_catalog.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game_debug.dir/build.make CMakeFiles/game_debug.dir/mesh_catalog.cpp.o
+.PHONY : mesh_catalog.cpp.o
+
+mesh_catalog.i: mesh_catalog.cpp.i
+.PHONY : mesh_catalog.i
+
+# target to preprocess a source file
+mesh_catalog.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game_debug.dir/build.make CMakeFiles/game_debug.dir/mesh_catalog.cpp.i
+.PHONY : mesh_catalog.cpp.i
+
+mesh_catalog.s: mesh_catalog.cpp.s
+.PHONY : mesh_catalog.s
+
+# target to generate assembly for a file
+mesh_catalog.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game_debug.dir/build.make CMakeFiles/game_debug.dir/mesh_catalog.cpp.s
+.PHONY : mesh_catalog.cpp.s
 
 newstring.o: newstring.cpp.o
 .PHONY : newstring.o
@@ -675,6 +723,9 @@ help:
 	@echo "... compiled_header_libs.o"
 	@echo "... compiled_header_libs.i"
 	@echo "... compiled_header_libs.s"
+	@echo "... controller_view.o"
+	@echo "... controller_view.i"
+	@echo "... controller_view.s"
 	@echo "... draw.o"
 	@echo "... draw.i"
 	@echo "... draw.s"
@@ -699,6 +750,9 @@ help:
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"
+	@echo "... mesh_catalog.o"
+	@echo "... mesh_catalog.i"
+	@echo "... mesh_catalog.s"
 	@echo "... newstring.o"
 	@echo "... newstring.i"
 	@echo "... newstring.s"

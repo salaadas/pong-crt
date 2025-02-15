@@ -356,6 +356,18 @@ void put_vertex(Vertex_XCNUU *v, Vector2 p, u32 scale_color, Vector3 normal, f32
     v->uv1 = Vector2(0, 0);
 }
 
+void put_vertex(Vertex_XCNUU *v, Vector3 p, u32 scale_color, Vector3 normal, f32 uv_u, f32 uv_v)
+{
+    v->position.x = p.x;
+    v->position.y = p.y;
+    v->position.z = p.z;
+    v->color_scale = abgr(scale_color);
+    v->normal = normal;
+    v->uv0.x = uv_u;
+    v->uv0.y = uv_v;
+    v->uv1 = Vector2(0, 0);
+}
+
 void immediate_vertex(Vector3 position, u32 color_scale, Vector3 normal, Vector2 uv)
 {
     if (num_immediate_vertices >= MAX_IMMEDIATE_VERTICES) immediate_flush();
@@ -561,6 +573,40 @@ void immediate_quad(Vector2 p0_2D, Vector2 p1_2D, Vector2 p2_2D, Vector2 p3_2D,
     num_immediate_vertices += 6;
 }
 
+void immediate_quad(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, Vector3 normal, u32 multiply_color)
+{
+    if (num_immediate_vertices > MAX_IMMEDIATE_VERTICES - 6) immediate_flush();
+
+    Vertex_XCNUU *v = immediate_vertex_ptr(num_immediate_vertices);
+
+    put_vertex(&v[0], p0, multiply_color, normal, 0, 0);
+    put_vertex(&v[1], p1, multiply_color, normal, 1, 0);
+    put_vertex(&v[2], p2, multiply_color, normal, 1, 1);
+
+    put_vertex(&v[3], p0, multiply_color, normal, 0, 0);
+    put_vertex(&v[4], p2, multiply_color, normal, 1, 1);
+    put_vertex(&v[5], p3, multiply_color, normal, 0, 1);
+
+    num_immediate_vertices += 6;
+}
+
+void immediate_quad(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, u32 multiply_color)
+{
+    if (num_immediate_vertices > MAX_IMMEDIATE_VERTICES - 6) immediate_flush();
+
+    Vertex_XCNUU *v = immediate_vertex_ptr(num_immediate_vertices);
+
+    put_vertex(&v[0], p0, multiply_color, 0, 0);
+    put_vertex(&v[1], p1, multiply_color, 1, 0);
+    put_vertex(&v[2], p2, multiply_color, 1, 1);
+
+    put_vertex(&v[3], p0, multiply_color, 0, 0);
+    put_vertex(&v[4], p2, multiply_color, 1, 1);
+    put_vertex(&v[5], p3, multiply_color, 0, 1);
+
+    num_immediate_vertices += 6;
+}
+
 void immediate_letter_quad(Font_Quad q, Vector4 color, f32 theta, f32 z_layer)
 {
     if (num_immediate_vertices > MAX_IMMEDIATE_VERTICES - 6)
@@ -630,8 +676,8 @@ void refresh_transform()
 
 void set_shader(Shader *shader)
 {
-    if (shader == current_shader && !shader->dirty) return;
     if (current_shader) immediate_flush();
+    if (shader == current_shader && !shader->dirty) return;
 
     current_shader = shader;
     shader->dirty  = false;

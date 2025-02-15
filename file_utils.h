@@ -48,4 +48,8 @@ my_pair<String, bool> consume_next_line(Text_File_Handler *handler);
 
 my_pair<f32, String> string_to_float(String s, bool *success);
 my_pair<i64, String> string_to_int(String s, bool *success);
+
+my_pair<bool, String> string_to_bool(String s, bool *success);
+
 my_pair<Vector4, String> string_to_vec4(String s, bool *success);
+my_pair<Vector3, String> string_to_vec3(String s, bool *success);

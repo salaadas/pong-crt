@@ -16,23 +16,15 @@
 #define GLFW_EXPOSE_NATIVE_X11
 #include <GLFW/glfw3native.h>
 
-constexpr auto VSYNC = true;
+constexpr auto VSYNC  = true;
+constexpr f32  DT_MAX = 0.15f;
 
-const f32    DT_MAX = 0.15f;
 const String PROGRAM_NAME("Pong!!");
-i32          BIG_FONT_SIZE = 32; // @Note: This font size changes depending on the window's size
 const String FONT_FOLDER("data/fonts"); // @Cleanup: Remove this.
-
-// constexpr auto STARTING_WIDTH  = 320 * 3;
-// constexpr auto STARTING_HEIGHT = 200 * 3;
+i32          BIG_FONT_SIZE = 32; // @Note: This font size changes depending on the window's size
 
 constexpr auto STARTING_WIDTH  = 1600;
 constexpr auto STARTING_HEIGHT = 900;
-
-// @Hack: @Incomplete: We want the ability to switch between different sizes too, not just 320 by 240.
-constexpr auto OFFSCREEN_BUFFER_SCALE  = 3.0f;
-constexpr auto OFFSCREEN_BUFFER_WIDTH  = 320 * OFFSCREEN_BUFFER_SCALE;
-constexpr auto OFFSCREEN_BUFFER_HEIGHT = 240 * OFFSCREEN_BUFFER_SCALE;
 
 i32          resized_width  = STARTING_WIDTH;  // @Hack:
 i32          resized_height = STARTING_HEIGHT; // @Hack:
@@ -44,11 +36,14 @@ bool         was_window_resized_this_frame = true; // Set to true to resize on f
 f32          windowed_aspect_ratio_h_over_w = 0.0f;
 bool         window_in_focus = true;
 
-String dir_of_running_exe;
+String       dir_of_running_exe;
 
-RArr<Catalog_Base*>     all_catalogs;
-Shader_Catalog          shader_catalog;
-Texture_Catalog         texture_catalog;
+RArr<Catalog_Base*>  all_catalogs;
+Shader_Catalog       shader_catalog;
+Texture_Catalog      texture_catalog;
+Mesh_Catalog         mesh_catalog;
+
+Texture_Map *the_white_texture;
 
 // @Incomplete: Ifdef this out because we only need this during development.
 extern "C" const char *__lsan_default_options()
@@ -306,9 +301,11 @@ int main()
     //
     init_shader_catalog(&shader_catalog);
     init_texture_catalog(&texture_catalog);
+    init_mesh_catalog(&mesh_catalog);
 
     array_add(&all_catalogs, &shader_catalog.base);
     array_add(&all_catalogs, &texture_catalog.base);
+    array_add(&all_catalogs, &mesh_catalog.base);
 
     //
     // Then, we init OpenGL.
@@ -320,7 +317,7 @@ int main()
     //
     catalog_loose_files(String("data"), &all_catalogs);
 
-    // white_texture = catalog_find(&texture_catalog, String("white"));
+    the_white_texture = catalog_find(&texture_catalog, String("white"));
 
     // We init the shaders (after the catalog_loose_files). For draw.cpp
     init_draw();

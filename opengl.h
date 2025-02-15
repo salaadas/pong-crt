@@ -82,6 +82,9 @@ void immediate_quad(Vector2 p0_2D, Vector2 p1_2D, Vector2 p2_2D, Vector2 p3_2D,
                     Vector2 uv0, Vector2 uv1, Vector2 uv2, Vector2 uv3,
                     u32 multiply_color, f32 z);
 
+void immediate_quad(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, Vector3 normal, u32 multiply_color);
+void immediate_quad(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, u32 multiply_color);
+
 void immediate_triangle(Vector2 p0, Vector2 p1, Vector2 p2, u32 color);
 void immediate_triangle(Vector2 p0, Vector2 p1, Vector2 p2, u32 c0, u32 c1, u32 c2);
 

@@ -1,0 +1,107 @@
+[1]                      # Version number; do not delete!
+
+# @Incomplete: Do some math parsing because we want to use M_PI and some math operations.
+
+#
+# Controller's configs:
+# Always starts with a bang '!', one config per line.
+#
+
+! trigger_max_angle      0.436332   # Roughly 1.37 * M_PI
+! highlight_color        0 1 1 1    # Set it to 1 1 1 1 if you don't want any scale color for highlight.
+! show_deadzone          true
+! deadzone_color         1 0 1 1    # Set it to 1 1 1 1 if you don't want any scale color for deadzone.
+
+# This is when you press a button, you can see the controller tilting
+# according to what button(s) you pressed.
+! controller_tilt_max_angle      0.1963495  # This is roughly M_PI / 16. Put in '0' if you don't want tilt.
+
+! stick_max_angle                0.31415926 # This is roughly M_PI / 10.
+
+#
+# Parts' configs:
+# Always starts with a colon ':'.
+#
+
+# In general, a controller consists of many parts, and for each of the part, there needs to be
+# - The name of the part.
+# - The mesh
+# - Position of of the mesh relative to the root bone position.
+# - Highlight scale color when pressed.
+# - The orientation of the buttons when pressed.
+
+: top_shell
+mesh         test_top_shell
+scale_color  .64 .71 .68 1.0
+-                           # When you see this, the rest of the fields are set to the defaults
+
+# You can also merge multiple lines together.
+: bottom_shell   mesh test_bottom_shell     scale_color  .44 .51 .48 1.0    -
+
+: left_joystick
+mesh                      test_left_joystick
+type                      JOYSTICK
+position                  -0.53 -0.21 0.26
+scale_color               .97 .94 .76 1.0
+stick_directional_tilt    false                       # Setting this to 'false' because register the left joystick and dpad at the same time.
+-
+
+: right_joystick
+mesh                      test_right_joystick
+type                      JOYSTICK
+position                  0.27 -0.21 -0.05
+scale_color               .97 .94 .76 1.0
+stick_directional_tilt    true
+-
+
+# The 'tilt_direction' is as follows:   tilt_direction  x_tilt y_tilt z_tilt
+# Each of the component stands for the amount that you tilt in the x axis, y axis, and z axis.
+# You can put however high these values you want, but it will be normalized later on.
+
+# Usually, the y component is not used, but there is an option for that too if you want.
+# This is because the controller is oriented upwards, and so this means that:
+# - x axis is for rotating forward/backward.
+# - y axis is for rotating like a steering wheel.
+# - z axis is for tilting left or right.
+
+: dpad_left    mesh test_dpad_left   tilt_direction   0  0 -1     scale_color  .97 .94 .76 1.0   -
+: dpad_right   mesh test_dpad_right  tilt_direction   0  0  1     scale_color  .97 .94 .76 1.0   -
+: dpad_up      mesh test_dpad_up     tilt_direction   1  0  0     scale_color  .97 .94 .76 1.0   -
+: dpad_down    mesh test_dpad_down   tilt_direction  -1  0  0     scale_color  .97 .94 .76 1.0   -
+
+: button_a     mesh test_button_a    tilt_direction  -1  0  0     scale_color  .43 .87 .34 1    -
+: button_b     mesh test_button_b    tilt_direction   1  0  1     scale_color  .87 .22 .11 1    -
+: button_x     mesh test_button_x    tilt_direction   1  0 -1     scale_color  .31 .21 .92 1    -
+: button_y     mesh test_button_y    tilt_direction   1  0  0     scale_color  .87 .91 .44 1    -
+
+: L1
+mesh        test_L1
+position    -0.48 -0.16 0.61
+scale_color .28 .35 .42 1.0
+-
+
+: R1
+mesh        test_R1
+position    0.48 -0.16 0.61
+scale_color .28 .35 .42 1.0
+-
+
+: L2
+mesh            test_L2
+type            REAR_TRIGGER
+position        -0.59 -0.08 0.52
+scale_color     .28 .35 .42 1.0
+trigger_pull    true
+tilt_direction  1 0 0
+-
+
+: R2
+mesh            test_R2
+type            REAR_TRIGGER
+position        0.59 -0.08 0.52
+scale_color     .28 .35 .42 1.0
+trigger_pull    true
+tilt_direction  1 0 0
+-
+
+: extra     mesh test_extra    scale_color  .28 .35 .42 1.0    -

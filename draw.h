@@ -10,3 +10,6 @@ struct Dynamic_Font;
 
 void draw_prepared_text(Dynamic_Font *font, i64 x, i64 y, Vector4 color, f32 theta = 0, f32 z_layer = 0);
 i64 draw_text(Dynamic_Font *font, i64 x, i64 y, String text, Vector4 color);
+
+#include "controller_view.h" // @Temporary
+extern Controller xbox_controller;

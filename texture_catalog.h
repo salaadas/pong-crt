@@ -1,10 +1,9 @@
 #pragma once
 
 #include "common.h"
-
 #include "catalog.h"
-
 #include "texture.h"
+
 using Texture_Catalog = Catalog<Texture_Map>;
 
 void init_texture_catalog(Texture_Catalog *catalog);

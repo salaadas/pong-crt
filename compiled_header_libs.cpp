@@ -9,3 +9,6 @@
 #include <stb_image.h>
 
 #include <stb_vorbis.c>
+
+#define FAST_OBJ_IMPLEMENTATION
+#include <fast_obj.h>

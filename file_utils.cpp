@@ -320,6 +320,42 @@ my_pair<f32, String> string_to_float(String s, bool *success)
     return {result, s};
 }
 
+my_pair<Vector3, String> string_to_vec3(String s, bool *success)
+{
+    Vector3 result;
+
+    String orig_string;
+
+    f32    value;
+    String remainder;
+    bool   f_success;
+
+    my_pair<f32, String> p;
+
+    p = string_to_float(s, &f_success);
+    value     = p.first;
+    remainder = p.second;
+    *success = f_success;
+    if (!f_success) return {Vector3(0), orig_string};
+    result.x = value;
+
+    p = string_to_float(remainder, &f_success);
+    value     = p.first;
+    remainder = p.second;
+    *success = f_success;
+    if (!f_success) return {Vector3(0), orig_string};
+    result.y = value;
+
+    p = string_to_float(remainder, &f_success);
+    value     = p.first;
+    remainder = p.second;
+    *success = f_success;
+    if (!f_success) return {Vector3(0), orig_string};
+    result.z = value;
+
+    return {result, remainder};
+}
+
 my_pair<Vector4, String> string_to_vec4(String s, bool *success)
 {
     Vector4 result;
@@ -363,9 +399,34 @@ my_pair<Vector4, String> string_to_vec4(String s, bool *success)
     return {result, remainder};
 }
 
+my_pair<bool, String> string_to_bool(String s, bool *success)
+{
+    auto [bool_string, rest] = break_by_spaces(s);
+    auto result = false;
+
+    if (bool_string == String("true"))
+    {
+        result   = true;
+        *success = true;
+    }
+    else if (bool_string == String("false"))
+    {
+        result   = false;
+        *success = true;
+    }
+    else
+    {
+        *success = false;
+    }
+
+    return {result, rest};
+}
+
 my_pair<String, String> break_by_spaces(String line)
 {
     eat_spaces(&line);
+
+    if (!line) return {line, line}; // Return 2 empty strings.
 
     i64 i = 0;
     String first_half = line;
